@@ -1,4 +1,4 @@
-"# puffin-contracts"<br/>
+# puffin-contracts
 
 ```
 npm install -g truffle
