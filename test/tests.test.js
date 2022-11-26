@@ -72,48 +72,39 @@ contract("PuffinKYC Mainnet", async (accounts) => {
 
 contract("PuffinMainnetBridge", async (accounts) => {
 
-    describe("init test token", async () => {
-        it("intialize token", async () => {
+    beforeEach(async () => {
+        let token = await TestToken.deployed();
+        let approvals = await PuffinApprovals.deployed();
+        await approvals.allowApprove(accounts[0])
+        await approvals.approve(token.address)
+        await approvals.approve(accounts[0])
+
+        let bridge = await PuffinMainnetBridge.deployed();
+        await bridge.setKYC(approvals.address)
+        await bridge.setAssets(approvals.address)
+        await bridge.addVoter(accounts[0])
+    });
+    describe("can bridge in", async () => {
+        it("call bridgeIn()", async () => {
+            let bridge = await PuffinMainnetBridge.deployed();
             let token = await TestToken.deployed();
-            let token_bal = await token.balanceOf(accounts[0])
-            assert.equal(token_bal, BigInt(10**20))
+            await token.approve(bridge.address, 100)
+            await bridge.bridgeIn(10, token.address)
+            let bal = await token.balanceOf(accounts[0])
+            assert.equal(bal, (10**20) - 10)
         })
-    })
-    describe("approve token and user", async () => {
-        it("add approver to approved assets", async () => {
-            let approvals = await PuffinApprovals.deployed();
-            await approvals.allowApprove(accounts[0])
-        })
-        it("add token to approved assets", async () => {
-            let approvals = await PuffinApprovals.deployed();
+        it("call proposeOut()", async () => {
+            let bridge = await PuffinMainnetBridge.deployed();
             let token = await TestToken.deployed();
-            await approvals.approve(token.address)
-        })
-        it("add user to approved assets", async () => {
-            let approvals = await PuffinApprovals.deployed();
-            await approvals.approve(accounts[0])
-        })
-    })
-    describe("initialize bridge and set addresses", async () => {
-        it("set kyc address", async () => {
-            let bridge = await PuffinMainnetBridge.deployed();
-            let approvals = await PuffinApprovals.deployed();
-            await bridge.setKYC(approvals.address)
-            let val = await bridge.puffinKYC()
-            assert.equal(val, approvals.address)
-        })
-        it("set assets address", async () => {
-            let bridge = await PuffinMainnetBridge.deployed();
-            let approvals = await PuffinApprovals.deployed();
-            await bridge.setAssets(approvals.address)
-            let val = await bridge.puffinAssets()
-            assert.equal(val, approvals.address)
-        })
-        it("set warm wallet address", async () => {
-            let bridge = await PuffinMainnetBridge.deployed();
-            await bridge.setAssets(accounts[0])
-            let val = await bridge.puffinWarmWallet()
-            assert.equal(val, accounts[0])
+            await bridge.proposeOut(
+              token.address,
+              accounts[0],
+              10,
+              "0x736ead9873f4e3f6d220de36484ef816da816a649db54fd842d4e9323616ccec",
+              43114
+            )
+            let bal = await token.balanceOf(accounts[0])
+            assert.equal(bal, 10**20)
         })
     })
 });
