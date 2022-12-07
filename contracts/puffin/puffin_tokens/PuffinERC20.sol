@@ -50,8 +50,8 @@ contract PuffinERC20 is ERC20, Ownable {
             _approve(sender, _msgSender(), currentAllowance - amount);
         }
     }
-_transfer(sender, recipient, amount);
+    _transfer(sender, recipient, amount);
 
-return true;
-}
+    return true;
+    }
 }

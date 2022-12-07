@@ -1,6 +1,9 @@
 const TestToken = artifacts.require("TestToken");
 const PuffinApprovals = artifacts.require("PuffinApprovals");
 const PuffinMainnetBridge = artifacts.require("PuffinMainnetBridge");
+const PuffinSubnetBridge = artifacts.require("PuffinSubnetBridge");
+const PuffinERC20Deployer = artifacts.require("PuffinERC20Deployer");
+const ERC20 = artifacts.require("ERC20");
 
 contract("PuffinKYC Mainnet", async (accounts) => {
     describe("init test token", async () => {
@@ -108,3 +111,79 @@ contract("PuffinMainnetBridge", async (accounts) => {
         })
     })
 });
+
+contract("PuffinERC20Deployer", async (accounts) => {
+
+    beforeEach(async () => {
+        let token = await TestToken.deployed();
+        let approvals = await PuffinApprovals.deployed();
+        await approvals.allowApprove(accounts[0])
+        await approvals.approve(token.address)
+        await approvals.approve(accounts[0])
+
+        let tokenDeployer = await PuffinERC20Deployer.deployed();
+        await tokenDeployer.setPuffinApprovedAssets(approvals.address)
+        await tokenDeployer.setMinter(accounts[0], true)
+
+        await tokenDeployer.setNewMainnetToken(
+          token.address,
+          token.address,
+          43113,
+          "test",
+          "test"
+        )
+    });
+    describe("can mint and burn tokens", async () => {
+        // it("set new token", async () => {
+        //     let tokenDeployer = await PuffinERC20Deployer.deployed();
+        //     let token = await TestToken.deployed();
+        //     await tokenDeployer.setNewMainnetToken(
+        //       token.address,
+        //       token.address,
+        //       43113,
+        //       "test",
+        //       "test"
+        //     )
+        // })
+        it("can mint tokens", async () => {
+            let tokenDeployer = await PuffinERC20Deployer.deployed();
+            let token = await TestToken.deployed();
+            await tokenDeployer.mint(
+              token.address,
+              accounts[0],
+              100,
+              1
+            )
+        })
+        it("can burn tokens", async () => {
+            let tokenDeployer = await PuffinERC20Deployer.deployed();
+            let token = await TestToken.deployed();
+            let subAddress = await tokenDeployer.mainnetToSubnetTokenAddress(token.address)
+            let subtoken = await ERC20.at(subAddress)
+            await subtoken.approve(tokenDeployer.address, 50)
+            await tokenDeployer.burn(
+              subtoken.address,
+              accounts[0],
+              10,
+              0
+            )
+        })
+    })
+});
+
+// contract("PuffinSubnetBridge", async (accounts) => {
+//
+//     beforeEach(async () => {
+//         let token = await TestToken.deployed();
+//         let approvals = await PuffinApprovals.deployed();
+//         await approvals.allowApprove(accounts[0])
+//         await approvals.approve(token.address)
+//         await approvals.approve(accounts[0])
+//
+//         let bridge = await PuffinSubnetBridge.deployed();
+//         await bridge.setKYC(approvals.address)
+//         await bridge.setAssets(approvals.address)
+//         await bridge.addVoter(accounts[0])
+//     });
+//
+// });
