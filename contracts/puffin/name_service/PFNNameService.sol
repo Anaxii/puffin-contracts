@@ -58,6 +58,7 @@ contract PFNNameService is Ownable, ERC721Enumerable {
         address owner;
         mapping(address => bool) authorizedSubdomainUsers;
         mapping(uint256 => bytes) subDomains;
+        mapping(bytes => bool) isActive;
     }
 
     constructor() ERC721("PFN Name Service", "PFNNameService") {
@@ -114,8 +115,10 @@ contract PFNNameService is Ownable, ERC721Enumerable {
         require(block.timestamp < d.expirationDate, "PFNNameService: Domain expired");
         require(msg.sender == d.owner || d.authorizedSubdomainUsers[msg.sender], "PFNNameService: User is not authorized");
         bytes memory _subDomain = bytes(_subDomainName);
-        require(_subDomain.length > 0, "PFNNameSerivce: Length too small");
+        require(_subDomain.length > 0, "PFNNameSerivice: Length too small");
+        require(!d.isActive[_subDomain], "PFNNameService: Subaccount name already active");
         d.subDomains[d.numberOfCreatedSubdomains] = _subDomain;
+        d.isActive[_subDomain] = true;
         d.numberOfCreatedSubdomains++;
         d.numberOfActiveSubdomains++;
 
@@ -127,12 +130,21 @@ contract PFNNameService is Ownable, ERC721Enumerable {
     function removeSubDomain(uint256 itemId, uint256 subDomainId) external {
         domainInformation storage d = domainInfo[itemId];
         require(msg.sender == d.owner || d.authorizedSubdomainUsers[msg.sender], "PFNNameService: User is not authorized");
-        require(keccak256(d.subDomains[subDomainId]) != keccak256(""), "PFNNameService: Invalid subdomain ID");
+        require(keccak256(d.subDomains[subDomainId]) == keccak256(""), "PFNNameService: Invalid subdomain ID");
 
         d.numberOfActiveSubdomains--;
+        d.isActive[d.subDomains[subDomainId]] = false;
         d.subDomains[subDomainId] = "";
 
         // create credit system for removing subdomain
+    }
+
+    function getSubDomain(uint256 itemId, uint256 subDomainId) external view returns (string memory _domain) {
+        domainInformation storage d = domainInfo[itemId];
+        _domain = string.concat(string(d.domainName), ".pfn");
+        string memory sub = string.concat(string(d.subDomains[subDomainId]), ".");
+        _domain = string.concat(sub, _domain);
+        return _domain;
     }
 
     function calculateDomainCost(string memory _domainName) public view returns (uint256) {
@@ -188,6 +200,8 @@ contract PFNNameService is Ownable, ERC721Enumerable {
     function domain(address user) public view returns (string memory _domain) {
         bool _type = primaryDomainType[user];
         domainInformation storage d = domainInfo[primaryDomain[user]];
+        if (block.timestamp > d.expirationDate)
+            return "";
         _domain = string.concat(string(d.domainName), ".pfn");
         if (_type) {
             string memory sub = string.concat(string(d.subDomains[subDomainIndex[msg.sender]]), ".");
