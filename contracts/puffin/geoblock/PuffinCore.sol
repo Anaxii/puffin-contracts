@@ -13,7 +13,6 @@ contract PuffinCore is Ownable{
     PuffinClient c;
     PuffinUser u;
 
-    event NewUserRequest(address indexed user, address indexed userAccessPoint);
     event NewUserApproval(address indexed user, address indexed userAccessPoint);
     event NewUserAccessPoint(address indexed userAccessPoint);
     event ProhibitCountry(uint256 _countryId);
@@ -37,13 +36,7 @@ contract PuffinCore is Ownable{
         approvedContracts[_userAccessPoint] = false;
     }
 
-    function requestUserForContract(address _user, address _clientContract) external {
-        require(approved);
-        require(approvedContracts[msg.sender]);
-        emit NewUserRequest(_user, _clientContract);
-    }
-
-    function approveUserForContract(address _user, address _clientContract) external {
+    function approveUserForContract(address _user, address _clientContract) public onlyOwner {
         contractApprovals[_clientContract][_user] = true;
         emit NewUserApproval(_user, _clientContract);
     }
@@ -58,10 +51,14 @@ contract PuffinCore is Ownable{
         emit PermitCountry(_countryId);
     }
 
-    function checkApproval(address _user) external view returns (bool) {
+    function checkKYC(address _user) external view returns (bool) {
         require(approved);
-        require(approvedContracts[msg.sender]);
         return u.checkStatus(_user) == 2;
+    }
+
+    function checkApprovedContract(address _user, address _clientContract) public view returns (bool) {
+        require(approved);
+        return contractApprovals[_clientContract][_user];
     }
 
 }
