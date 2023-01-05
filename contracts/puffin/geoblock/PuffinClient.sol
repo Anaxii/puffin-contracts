@@ -1,5 +1,6 @@
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "PuffinCore.sol";
 
 contract PuffinClient is Ownable {
 
@@ -14,6 +15,13 @@ contract PuffinClient is Ownable {
 
     event NewEpoch(uint256 epoch, uint256 timestamp, uint256 users, uint256 _usdcPerUser);
     event NewPayment(uint256 epoch, uint256 timestamp, uint256 users, uint256 _usdcPerUser, uint256 totalPaid, uint256 remainingBalance);
+
+
+    constructor(address _payToAddress, address _usdc, uint256 _usdcPerUser) {
+        payToAddress = _payToAddress;
+        usdc = _usdc;
+        usdcPerUser = _usdcPerUser;
+    }
 
     function nextEpoch() public onlyOwner{
         epoch++;

@@ -1,27 +1,28 @@
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "PuffinClient.sol";
 import "PuffinUser.sol";
+import "PuffinClient.sol";
 
 contract PuffinCore is Ownable{
 
     bool approved;
-    uint8 geotier;
-    mapping(uint256 => bool) approvedCountries;
     mapping(address => bool) approvedContracts;
     mapping(address => mapping(address => bool)) contractApprovals;
 
     address public clientOwner;
 
     PuffinClient c;
-    PuffinUsers u;
+    PuffinUser u;
 
+    event NewUserRequest(address indexed user, address indexed userAccessPoint);
     event NewUserApproval(address indexed user, address indexed userAccessPoint);
     event NewUserAccessPoint(address indexed userAccessPoint);
+    event ProhibitCountry(uint256 _countryId);
+    event PermitCountry(uint256 _countryId);
 
     constructor(address _puffinClient, address _puffinUsers, address _clientOwner) {
         transferOwnership(msg.sender);
         clientOwner = _clientOwner;
-        u = PuffinUsers(_puffinUsers);
+        u = PuffinUser(_puffinUsers);
         c = PuffinClient(_puffinClient);
     }
 
@@ -36,28 +37,31 @@ contract PuffinCore is Ownable{
         approvedContracts[_userAccessPoint] = false;
     }
 
-    function prohibitCountry(uint256 _countryID) public {
-        require(msg.sender == clientOwner || msg.sender == owner());
-        approvedCountries[_countryID] = true;
-    }
-
-    function permitCountry(uint256 _countryID) public {
-        require(msg.sender == clientOwner || msg.sender == owner());
-        approvedCountries[_countryID] = false;
+    function requestUserForContract(address _user, address _clientContract) external {
+        require(approved);
+        require(approvedContracts[msg.sender]);
+        emit NewUserRequest(_user, _clientContract);
     }
 
     function approveUserForContract(address _user, address _clientContract) external {
-        require(approved);
-        require(approvedContracts[msg.sender]);
-        require(!approvedCountries(u.getGeo(_user)));
         contractApprovals[_clientContract][_user] = true;
         emit NewUserApproval(_user, _clientContract);
     }
 
-    function authorize(address _user) external view returns (bool) {
+    function prohibitCountry(uint256 _countryId) public {
+        require(msg.sender == clientOwner || msg.sender == owner());
+        emit ProhibitCountry(_countryId);
+    }
+
+    function permitCountry(uint256 _countryId) public {
+        require(msg.sender == clientOwner || msg.sender == owner());
+        emit PermitCountry(_countryId);
+    }
+
+    function checkApproval(address _user) external view returns (bool) {
         require(approved);
         require(approvedContracts[msg.sender]);
-        return u.checkStatus(_user);
+        return u.checkStatus(_user) == 2;
     }
 
 }
